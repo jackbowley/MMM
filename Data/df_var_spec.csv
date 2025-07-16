@@ -1,0 +1,9 @@
+,variable,beta,carryover,saturation,inflection,height,normalize
+0,c,10.0,,,,,False
+1,cyclical_var,1.0,,,,,True
+2,price,-1.0,,,,,True
+3,distribution,1.0,,,,,True
+4,media1,1.0,0.5,160,0.87,1.55,True
+5,media2,1.0,0.7,500,1.96,2.75,True
+6,media3,1.0,0.2,15,1.2,1.0,True
+7,error,0.2,,,,1.0,False
