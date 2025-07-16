@@ -186,7 +186,7 @@ def plot_actual_fitted_residuals(model,y):
 # plot_actual_fitted_residuals(model,df_values['actual'])
 
 
-def plot_response_curve(model, series_name,adstock_series, trans_series, actual_series):
+def plot_response_curve(model, series_name,adstock_series, trans_series, actual_series, title=None):
     """
     Plots coef * trans value vs trans value for a given series, with shaded 95% CI and actuals as dots.
     Inputs:
@@ -217,10 +217,13 @@ def plot_response_curve(model, series_name,adstock_series, trans_series, actual_
     plt.figure(figsize=(10, 6))
     plt.plot(adstock_sorted, fit_sorted, label=f'{series_name} (fit)', color='blue')
     plt.fill_between(adstock_sorted, fit_sorted - err_sorted, fit_sorted + err_sorted, color='blue', alpha=0.2, label='95% CI')
-    plt.scatter(adstock_sorted, actuals_sorted, color='black', label='actuals', s=30, alpha=0.7)
+    plt.scatter(adstock_sorted, actuals_sorted, color='black', label='actuals')
     plt.xlabel(f'Adstocked {series_name}')
-    plt.ylabel('Contribution (coef * trans)')
-    plt.title(f'{series_name} Estimated Contribution vs. Adstocked media with 95% Confidence Bounds and Actuals')
+    plt.ylabel('Contribution')
+    if title is not None:
+        plt.title(title)
+    else:
+        plt.title(f'{series_name} Estimated Contribution vs. Adstocked media with 95% Confidence Bounds and Actuals')
     plt.legend()
     plt.tight_layout()
     plt.show()
