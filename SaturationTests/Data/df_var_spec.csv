@@ -1,0 +1,10 @@
+,variable,beta,carryover,saturation,inflection,height,normalize
+0,c,20.0,,,,,False
+1,seasonality,2.0,,,,,True
+2,holidays,2.0,,,,,False
+3,price,-1.0,,,,,True
+4,distribution,1.0,,,,,True
+5,media1,1.0,0.5,160,0.87,1.55,True
+6,media2,1.0,0.7,500,1.96,2.75,True
+7,media3,1.0,0.2,15,1.2,1.0,True
+8,error,0.5,,,,1.0,False
