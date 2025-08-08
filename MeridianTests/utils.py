@@ -181,3 +181,112 @@ def calc_roi(df_decomp, df_var_spec,df_data,format=True):
         df_rois['value'] = df_rois['value'].apply(lambda x: f"{int(round(x)):,}")
         df_rois['roi'] = df_rois['roi'].apply(lambda x: f"{x:.2f}" if pd.notnull(x) else '')
     return df_rois
+
+
+def decomposition_linear(df_var_spec, df_values):
+    """
+    Decompose the model into variable contributions for each date.
+    Returns a DataFrame df_decomp with each variable's contribution and a 'total' column.
+    """
+    dc = df_values.copy()
+    # Sum all columns except the last two in dc
+    var_cols = df_var_spec['variable'].tolist()
+    # Sum all columns except the last two in dc
+    dc['model'] = dc[var_cols].sum(axis=1)
+    dc['actual'] = np.log(dc['actual'])
+    # Populate dc2 based on decomp_ref in df_var_spec
+    dc2 = dc.copy()
+    dc2['ref_sum'] = 0
+    for _, row in df_var_spec.iterrows():
+        var = row['variable']
+        if var in dc2.columns and 'decomp_ref' in row and not pd.isnull(row['decomp_ref']):
+            series = dc2[var]
+            ref_type = str(row['decomp_ref']).lower()
+            if ref_type == 'min':
+                ref_val = series.min()
+                dc2[var] = series - ref_val
+                dc2['ref_sum'] += ref_val
+            elif ref_type == 'max':
+                ref_val = series.max()
+                dc2[var] = series - ref_val
+                dc2['ref_sum'] += ref_val
+            elif ref_type == 'average':
+                ref_val = series.mean()
+                dc2[var] = series - ref_val
+                dc2['ref_sum'] += ref_val
+
+    # # Check that the sum of dc2 columns in var_spec plus ref_sum equals the model column
+    # var_cols = [row['variable'] for _, row in df_var_spec.iterrows() if row['variable'] in dc2.columns]
+
+    dc2['var_sum_plus_ref'] = dc2[var_cols].sum(axis=1) + dc2['ref_sum']
+    check_equal = np.allclose(dc2['var_sum_plus_ref'], dc['model'])
+    print('Check passed:', check_equal)
+
+    dc2['check']=dc2['var_sum_plus_ref'] - dc['model']
+    dc2['check'].sum()
+
+    # Create dc3 by grouping dc2 columns into the matching group in var_spec, with ref_sum in 'base'
+    group_map = {row['variable']: row['group'] for _, row in df_var_spec.iterrows() if row['variable'] in dc2.columns and 'group' in row}
+    grouped_cols = {}
+    for var, group in group_map.items():
+        if group not in grouped_cols:
+            grouped_cols[group] = []
+        grouped_cols[group].append(var)
+    grouped_cols['base'].append('ref_sum')  # Ensure 'base' group includes ref_sum
+    groups = list(grouped_cols.keys())
+    dc3 = pd.DataFrame(index=dc2.index)
+    for group, cols in grouped_cols.items():
+        dc3[group] = dc2[cols].sum(axis=1)
+
+
+    # Cross-check the sum equals the model column
+    dc3['model'] = dc3.sum(axis=1)
+    check_equal = np.allclose(dc3['model'], dc['model'])
+    print('Group sum check passed:', check_equal)
+
+    return dc3
+
+def merge_rois_with_percent_change(df_rois, df_rois_est):
+    """Merge ROI DataFrames on 'variable', add 'roi (est)', and compute % change.
+
+    Args:
+        df_rois (pd.DataFrame): Actual ROI table with columns ['variable', 'roi', ...].
+        df_rois_est (pd.DataFrame): Estimated ROI table with columns ['variable', 'roi', ...].
+
+    Returns:
+        pd.DataFrame: Merged DataFrame with 'roi (est)' and '% change (est/actual)'.
+    """
+    merged = df_rois.copy()
+    if 'roi' in df_rois_est.columns:
+        merged = merged.merge(
+            df_rois_est[['variable', 'roi']],
+            on='variable',
+            how='left',
+            suffixes=('', '_est'),
+        )
+        merged = merged.rename(columns={'roi_est': 'roi (est)'})
+    else:
+        print("roi column not found in df_rois_est")
+
+    def _to_float(x):
+        if pd.isna(x):
+            return np.nan
+        if isinstance(x, str):
+            try:
+                return float(x.replace(',', ''))
+            except Exception:
+                return np.nan
+        try:
+            return float(x)
+        except Exception:
+            return np.nan
+
+    def pct_change(row):
+        actual = _to_float(row.get('roi'))
+        est = _to_float(row.get('roi (est)'))
+        if pd.notnull(actual) and pd.notnull(est) and actual != 0:
+            return f"{100 * (est - actual) / actual:.2f}%"
+        return ''
+
+    merged['% change (est/actual)'] = merged.apply(pct_change, axis=1)
+    return merged
