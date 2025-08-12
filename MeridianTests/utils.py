@@ -290,3 +290,83 @@ def merge_rois_with_percent_change(df_rois, df_rois_est):
 
     merged['% change (est/actual)'] = merged.apply(pct_change, axis=1)
     return merged
+
+
+# Define a reusable function to clean and convert numeric-like columns in any DataFrame
+import re
+import numpy as np
+import pandas as pd
+
+
+def clean_numeric_dataframe(df: pd.DataFrame,
+                            exclude=None,
+                            in_place: bool = True) -> pd.DataFrame:
+    """
+    Clean and convert numeric-like columns in a DataFrame.
+
+    - Strips currency symbols ($, €, £), commas, percent signs, spaces
+    - Removes trailing credible interval text: e.g., "123.4 (1.1, 2.2)"
+    - Handles accounting negatives like "(1,234.56)"
+    - Normalizes unicode minus
+    - Coerces to float; non-convertible values become NaN
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame.
+    exclude : Iterable[str] | None
+        Column names to skip (e.g., identifiers like 'channel'). Case-insensitive.
+    in_place : bool
+        If True, modify df in place and return it; otherwise operate on a copy.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with cleaned numeric columns.
+    """
+    if exclude is None:
+        exclude = []
+    exclude_lc = {str(c).lower() for c in exclude}
+
+    out = df if in_place else df.copy()
+
+    def _clean_numeric_str(val):
+        if pd.isna(val):
+            return np.nan
+        s = str(val).strip()
+        if s == '' or s.lower() in {'nan', 'none', 'null', 'na'} or s in {'—', '–', '-'}:
+            return np.nan
+        # Accounting negatives like (1,234.56)
+        is_accounting_neg = False
+        if re.fullmatch(r"\(\s*[\d$€£,.%\s\-]+\s*\)", s):
+            is_accounting_neg = True
+            s = s[1:-1].strip()
+        # Remove trailing CI text: "123.4 (1.1, 2.2)"
+        if ' (' in s:
+            s = s.split(' (', 1)[0].strip()
+        # Normalize unicode minus
+        s = s.replace('\u2212', '-')
+        # Strip currency, percent, thousands separators
+        s = re.sub(r'[,$€£%]', '', s)
+        # Remove spaces
+        s = s.replace(' ', '')
+        # Keep numeric characters only
+        s = re.sub(r'[^0-9eE+\-\.]', '', s)
+        if s in {'', '-', '+', '.', '+.', '-.'}:
+            return np.nan
+        try:
+            num = float(s)
+            return -num if is_accounting_neg else num
+        except Exception:
+            return np.nan
+
+    for c in out.columns:
+        if str(c).lower() in exclude_lc:
+            continue
+        # Apply cleaning for object columns
+        if out[c].dtype == 'object':
+            out[c] = out[c].apply(_clean_numeric_str)
+        # Final coercion to numeric
+        out[c] = pd.to_numeric(out[c], errors='coerce')
+
+    return out
