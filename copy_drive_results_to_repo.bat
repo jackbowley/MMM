@@ -17,7 +17,7 @@ if not exist "%DESTDIR%" (
 
 REM >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 REM Configure your source files here (space-separated list) - filenames only
-set "FILES=saved_mmm_additive.pkl saved_mmm_additive_halfPrice.pkl saved_mmm_additive_halfPrice2.pkl saved_mmm_additive_halfPrice3.pkl"
+set "FILES=saved_mmm_additive.pkl saved_mmm_additive_halfPrice.pkl saved_mmm_additive_halfPrice2.pkl saved_mmm_additive_halfPrice3.pkl saved_mmm_loglinear.pkl"
 REM To add more, append to FILES: set "FILES=%FILES% another_file.pkl"
 REM <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
